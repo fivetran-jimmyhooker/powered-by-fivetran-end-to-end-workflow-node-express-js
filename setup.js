@@ -1,11 +1,12 @@
-// packages
-const axios = require('axios');
 const randomWords = require('random-words');
-const clc = require('cli-color');
 const fs = require('fs');
+const os = require('os');
+require('pretty-error').start();
+const chalk = require('chalk');
 // custom functions
 const axiosWithAuth = require('./axiosWithAuth');
 const writeObjectToFile = require('./writeFiles');
+const runPolling = require('./connectorStatus');
 const { successMessage, errorMessage } = require('./helpers');
 
 // 
@@ -16,8 +17,9 @@ const { successMessage, errorMessage } = require('./helpers');
 // it will pause the connector.
 //
 
-// do some basic stuff to keep track of the objects we create, 
-// making it easy to delete when we're done if we'd like
+// We'll keep track of the Fivetran objects we create with another object!
+// We'll write this object to a file called setup-details.json so we can easily
+// delete at a later time. 
 const filePath = 'setup-details.json';
 const objectIds = {
     group: '',
@@ -35,70 +37,122 @@ if (fs.existsSync(filePath)) {
 
 // endpoints
 const base = 'https://api.fivetran.com/v1';
-const groups = `${base}/groups`;
-const connectors = `${base}/connectors`;
-const destinations = `${base}/destinations`;
+const groupsEndpoint = `${base}/groups`;
+const connectorsEndpoint = `${base}/connectors`;
+const destinationsEndpoint = `${base}/destinations`;
+const webhooksEndpoint = `${base}/webhooks/account`;
 
-// create group
-const createGroup = async (name) => {
-    try {
-        const requestObject = { "name": name };
-        const response = await axiosWithAuth(groups, 'post', requestObject);
-        const responseMessage = response.data;
-        // parse the response for the group id
-        const groupId = responseMessage.data.id;
-        objectIds.group = groupId;
+// Group Object (feel free to rename)
+// https://fivetran.com/docs/rest-api/groups
+const groupObject = { "name": 'pbf_snowflake_jan10' };
 
-        // write the group id to a json file for later deletion
-        writeObjectToFile(filePath, objectIds);
-        successMessage(`Group ${groupId} created`);
-    } catch (error) {
-        errorMessage(error);
-    }
-  };
-
-// create destination on Fivetran, follow setup guide for snowflake up to step 2 for an easy example
+// Destination Object
+// https://fivetran.com/docs/rest-api/destinations
+// Follow setup guide for snowflake up to step 2 for an easy example
 // https://fivetran.com/docs/destinations/snowflake/setup-guide
-
-const createDestination = async () => {
-    try {
-        const groupId = objectIds.group;
-        const requestObject = {
-            "group_id": groupId,
-            "service":"snowflake",
-            "region":"GCP_US_EAST4",
-            "time_zone_offset":"-5",
-            "config":{
-                "host":process.env.DESTINATION_HOST,
-                "port":443,
-                "database": process.env.DESTINATION_DATABASE,
-                "auth":"PASSWORD",
-                "user": process.env.DESTINATION_USER,
-                "password":process.env.DESTINATION_PASSWORD
-            }
-        };
-
-        console.log
-        const response = await axiosWithAuth(destinations, 'post', requestObject);
-        const responseMessage = response.data;
-        // parse the response for the group id
-        const destinationId = responseMessage.data.id;
-        objectIds.destination = destinationId;
-
-        // write the destination id to a json file for later deletion
-        writeObjectToFile(filePath, objectIds);
-        successMessage(`Destination ${destinationId} created`);
-    } catch (error) {
-        errorMessage(error);
+const destinationObject = {
+    "group_id": '',
+    "service":"snowflake",
+    "region":"GCP_US_EAST4",
+    "time_zone_offset":"-5",
+    "config":{
+        "host":process.env.DESTINATION_HOST,
+        "port":443,
+        "database": process.env.DESTINATION_DATABASE,
+        "auth":"PASSWORD",
+        "user": process.env.DESTINATION_USER,
+        "password":process.env.DESTINATION_PASSWORD
     }
+};
+
+// Webhook Object
+// https://fivetran.com/docs/rest-api/webhooks
+// Simple account level webhook to receive all sync_end events
+const webhookObject = {
+    "url": process.env.WEBHOOK_URL,
+    "events": [
+      "sync_end"
+    ],
+    "active": true,
+    "secret": process.env.SIGNATURE_SECRET
   };
 
-  
+// Connector Object
+// https://fivetran.com/docs/rest-api/connectors
+// Create github connector and return connect card URL
+// We'll poll after creation to check for when auth is complete
+const connectorObject = {
+    "service": "github",
+    "paused": true,
+    "pause_after_trial": true,
+    "group_id": '',
+    "config": {
+        "schema": "github"
+    },
+    "connect_card_config": {
+        "redirect_uri": "https//www.jimmyhooker.com"
+    }
+}
+let connectorId;
+let connectCardUrl;
+
+// Function to create against the Fivetran API
+const createObject = async (resource, endpoint, operation, requestObject) => {
+    let responseMessage;
+    try {
+        // console.log(requestObject)
+        const response = await axiosWithAuth(endpoint, operation, requestObject);
+        // console.log(response)
+        responseMessage = response.data;
+        console.log(responseMessage)
+        // parse the response for the id and update our objectIds object
+        let objectId;
+        if (resource == 'webhook') {
+            // webhook responses don't have a data object
+            objectId = responseMessage.id;
+        } else if (resource == 'connector') {
+            connectCardUrl = responseMessage.data.connect_card.uri;
+            objectId = responseMessage.data.id;
+            successMessage(connectCardUrl);
+        } else {
+            objectId = responseMessage.data.id;
+        }
+        objectIds[resource] = objectId;
+
+        // write the id to a json file for later deletion
+        writeObjectToFile(filePath, objectIds);
+        successMessage(`${resource} ${objectId} created`);
+    } catch (error) {
+        if (resource == 'webhook') {
+            errorMessage(`${error}${os.EOL}${responseMessage.data}${os.EOL} Please check your webhook url is live, https, and able to respond with 2xx codes`);
+        }
+        errorMessage(responseMessage.data);
+    }
+}
 
   const runSetup = async () => {
     try {
-        await createGroup('pbf_snowflake_jan10');
-        await createDestination();
+        // Create Group
+        await createObject('group', groupsEndpoint, 'post', groupObject);
+        // update our destinationObject and connectorObject's now that we have a group ID
+        destinationObject.group_id = objectIds.group;
+        connectorObject.group_id = objectIds.group;
+
+        // Create Destination
+        await createObject('destination', destinationsEndpoint, 'post', destinationObject);
+
+        // Create Webhook
+        await createObject('webhook', webhooksEndpoint, 'post', webhookObject);
+
+        // Create Connector
+        await createObject('connector', connectorsEndpoint, 'post', connectorObject);
+        // update our connectorId variable now that we have it
+        connectorId = objectIds.connector;
+
+        // Poll for connector status
+        await runPolling(connectorsEndpoint, connectorId);
+
+        console.log("does this run right away because of the await?");
     } catch (error) {
       errorMessage(error);
     }
@@ -106,12 +160,6 @@ const createDestination = async () => {
 
   runSetup();
 
-
-// create account level webhook for sync_end
-
-// create github connector and return connect card URL
-
-// poll for connector status after 5 seconds
 
 // once connector is in auth state, retrieve the schema
 

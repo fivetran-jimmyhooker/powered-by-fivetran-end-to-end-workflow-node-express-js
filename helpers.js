@@ -1,17 +1,18 @@
 const os = require('os');
-const clc = require('cli-color');
+const chalk = require('chalk');
+require('pretty-error').start();
 
 // Console.log success message
 const successMessage = (message) => {
     console.log(os.EOL);
-    console.log(clc.green(message));
-    console.log(os.EOL);
+    console.log(chalk.green(message));
 }
 
 // Throw error
 const errorMessage = (message) => {
     console.log(os.EOL);
-    throw new Error(clc.red(message));
+    const err = new Error();
+    throw new Error(chalk.red(message) + "\n" + err.stack);
 }
 
 module.exports = {

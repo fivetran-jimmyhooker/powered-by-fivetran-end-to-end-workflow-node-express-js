@@ -1,4 +1,3 @@
-const axios = require('axios');
 const fs = require('fs');
 const axiosWithAuth = require('./axiosWithAuth');
 const { successMessage, errorMessage } = require('./helpers');
@@ -13,6 +12,7 @@ const base = 'https://api.fivetran.com/v1';
 const groups = `${base}/groups`;
 const connectors = `${base}/connectors`;
 const destinations = `${base}/destinations`;
+const webhooks = `${base}/webhooks`;
 
 // parse a previously created file if it exists and store it as objectIds
 const filePath = 'setup-details.json';
@@ -26,53 +26,46 @@ if (fs.existsSync(filePath)) {
         }
         objectIds = JSON.parse(data);
     } catch(error) {
-        errorMessage(response.message);
+        errorMessage(error);
     }
 } else {
     errorMessage(`${filePath} does not exist, please run setup first.`);
 }
 
 // delete group and its connectors/destinations
-const deleteGroup = async (groupId) => {
+const deleteObject = async (type, id) => {
+    let responseMessage;
     try {
-        const response = await axiosWithAuth(`${groups}/${groupId}`, 'delete');
-        const responseMessage = response.data;
-
-        if (response.status === 200) {
-            successMessage(responseMessage.message);
+        const response = await axiosWithAuth(`${type}/${id}`, 'delete');
+        responseMessage = response.data;
+        console.log(`responseMessage: ${JSON.stringify(responseMessage)}`);
+        if (response.status >= 200 && response.status < 300) {
+            successMessage(responseMessage.message ? responseMessage.message : `${type} deleted, Status: ${response.status}`);
         } else {
-            errorMessage(responseMessage.message);
+            errorMessage(responseMessage.message ? responseMessage.message : `${type} didn't delete, Status: ${response.status}`);
         }
     } catch (error) {
-        errorMessage(error.message);
+        errorMessage(responseMessage.message ? responseMessage.message : response.status);
     }
 }
-
-const deleteDestination = async (destinationId) => {
-    try {
-        const response = await axiosWithAuth(`${destinations}/${destinationId}`, 'delete');
-        const responseMessage = response.data;
-
-        if (response.status === 200) {
-            successMessage(responseMessage.message);
-        } else {
-            errorMessage(responseMessage.message);
-        }
-    } catch (error) {
-        errorMessage(error.message);
-    }
-}
-
 
 const runDelete = async () => {
     try {
+        if (objectIds.connector) {
+            const connectorId = objectIds.connector;
+            await deleteObject(connectors, connectorId);
+        }
         if (objectIds.destination) {
             const destinationId = objectIds.destination;
-            await deleteDestination(destinationId);
+            await deleteObject(destinations, destinationId);
         }
         if (objectIds.group) {
             const groupId = objectIds.group;
-            await deleteGroup(groupId);
+            await deleteObject(groups, groupId);
+        }
+        if (objectIds.webhook) {
+            const webhookId = objectIds.webhook;
+            await deleteObject(webhooks, webhookId);
         }
 
         // delete setup-details.json file

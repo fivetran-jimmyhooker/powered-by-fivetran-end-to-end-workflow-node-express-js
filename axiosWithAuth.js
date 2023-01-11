@@ -23,6 +23,7 @@ const axiosWithAuth = async (endpoint, method = 'get', data = {}) => {
         });
         return response;
     } catch (error) {
+        console.log(`error: ${error}`);
         errorMessage(`Error making ${method} request to ${endpoint}: ${error}`);
     }
 };
