@@ -4,10 +4,10 @@ require("pretty-error").start();
 const chalk = require("chalk");
 const figlet = require("figlet");
 const open = require("open");
-const { setTimeout } = require("timers/promises.js");
+const { setTimeout } = require("timers/promises");
 const axiosWithAuth = require("./axios-with-auth.js");
 const writeObjectToFile = require("./write-files.js");
-const runPolling = require("./runPolling.js");
+const runPolling = require("./run-polling.js");
 
 //
 // This file will run through our end-to-end flow
