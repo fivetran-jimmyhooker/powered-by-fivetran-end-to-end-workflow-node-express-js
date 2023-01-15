@@ -27,7 +27,7 @@ These are the steps this set of scripts will be running through to create a conn
 ## Setup
 
 - Clone the repo or download the full zip, then open a terminal and `cd` into the project directory
-- Run `npm install' from your terminal while inside the root of the project to install all packages
+- Run `npm install` from your terminal while inside the root of the project to install all packages
 - Open another terminal window and run NGROK with `ngrok http 4242`. This will open a tunnel to your local machine on port 4242, which is what our Webhook server will user. Copy down the secure, https url it gives you. You'll use this to update the `WEBHOOK_URL` env variable in the next step.
 
 ## Env Variables
