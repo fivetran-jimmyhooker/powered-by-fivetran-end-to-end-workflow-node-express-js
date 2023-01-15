@@ -23,6 +23,8 @@
     "crypto": "^1.0.1",
     "dotenv": "^16.0.3",
     "express": "^4.18.2",
+    "figlet": "^1.5.2",
+    "open": "^8.4.0",
     "os": "^0.1.2",
     "pretty-error": "^4.0.0",
     "random-words": "^1.2.1"

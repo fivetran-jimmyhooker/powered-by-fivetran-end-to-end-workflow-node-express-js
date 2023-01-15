@@ -1,6 +1,7 @@
 const fs = require('fs');
 const axiosWithAuth = require('./axiosWithAuth');
 const { successMessage, errorMessage } = require('./helpers');
+const chalk = require('chalk');
 
 //
 // This script will delete any objects created by the 
@@ -18,6 +19,9 @@ const webhooks = `${base}/webhooks`;
 const filePath = 'setup-details.json';
 let objectIds;
 
+// To satisfy my terrible OCD
+const toTitleCase = (word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+
 if (fs.existsSync(filePath)) {
     try {
         const data = fs.readFileSync(filePath);
@@ -32,20 +36,19 @@ if (fs.existsSync(filePath)) {
     errorMessage(`${filePath} does not exist, please run setup first.`);
 }
 
-// delete group and its connectors/destinations
+// Re-usable function to delete objects
 const deleteObject = async (type, id) => {
     let responseMessage;
     try {
         const response = await axiosWithAuth(`${type}/${id}`, 'delete');
         responseMessage = response.data;
-        console.log(`responseMessage: ${JSON.stringify(responseMessage)}`);
-        if (response.status >= 200 && response.status < 300) {
-            successMessage(responseMessage.message ? responseMessage.message : `${type} deleted, Status: ${response.status}`);
-        } else {
-            errorMessage(responseMessage.message ? responseMessage.message : `${type} didn't delete, Status: ${response.status}`);
-        }
+        const resourceType = type.split("/").pop();
+        const resource = toTitleCase(resourceType);
+
+        // Special case for webhooks
+        console.log(responseMessage.message ? '' : chalk.green(`${resource} ${id} deleted`));
     } catch (error) {
-        errorMessage(responseMessage.message ? responseMessage.message : response.status);
+        console.log(error.response.data);
     }
 }
 

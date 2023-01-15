@@ -1,47 +1,43 @@
 const axiosWithAuth = require('./axiosWithAuth');
 const { successMessage, errorMessage } = require('./helpers');
 const chalk = require('chalk');
+const os = require('os');
 
-// Poll for connector status
 let connectorStatus;
-let connectorPollingInterval = 5000;
+let connectorPollingInterval = 10000;
 let connectorPollingAttempts = 0;
-let maxConnectorPollingAttempts = 20;
+let maxConnectorPollingAttempts = 50;
 
-const base = 'https://api.fivetran.com/v1';
-const connectorsEndpoint = `${base}/connectors`;
-const connectorId = 'refinance_patronage';
-const fullEndpoint = `${connectorsEndpoint}/${connectorId}`;
+const runPolling = async (endpoint, connectorId, field, value) => {
+    return new Promise(async (resolve, reject) => {
+      
+        const intervalId = setInterval(async () => {
+            if (connectorPollingAttempts >= maxConnectorPollingAttempts) {
+                clearInterval(intervalId);
+                reject(`Connector ${connectorId} did not change status to ${value} after ${connectorPollingAttempts} attempts`);
+            } 
+            try {
+                const response = await axiosWithAuth(`${endpoint}/${connectorId}`, 'get');
+                const responseMessage = response.data;
+                connectorStatus = responseMessage.data.status[field];
 
-const pollConnector = async (endpoint, connectorId) => {
-    try {
-        const response = await axiosWithAuth(`${endpoint}/${connectorId}`, 'get');
-        const responseMessage = response.data;
-        connectorStatus = responseMessage.data.status.setup_state;
-        console.log(chalk.yellow(`Connector status: ${connectorStatus}`));
-        connectorPollingAttempts++;
-    } catch (error) {
-        errorMessage(error);
-    }
-}
-
-const runPolling = (endpoint, connectorId) => {
-    const intervalId = setInterval(() => {
-        console.log(`connectorPollingAttempts: ${connectorPollingAttempts}`)
-        if (connectorStatus === 'connected') {
-            clearInterval(intervalId);
-            successMessage(`Connector ${connectorId} connected`);
-        } else if (connectorPollingAttempts >= maxConnectorPollingAttempts) {
-            clearInterval(intervalId);
-            errorMessage(`Connector ${connectorId} did not connect after ${connectorPollingAttempts} attempts`);
-        } else {
-            pollConnector(endpoint, connectorId);
-        }
-    }, connectorPollingInterval);
-}
-
-
-
-// runPolling(connectorsEndpoint, connectorId);
+                console.log(os.EOL);
+                console.log(chalk.yellow(`Connector status: ${connectorStatus}`));
+                console.log(chalk.yellow(`Polling attempts: ${connectorPollingAttempts} out of ${maxConnectorPollingAttempts}`));
+                connectorPollingAttempts++;
+                if (field === 'setup_state') {
+                    console.log("Authenticate the Connect Card to get to the next step!");
+                }
+                if (connectorStatus === value) {
+                    clearInterval(intervalId);
+                    resolve(`Connector ${connectorId} ${field} is ${value}`);
+                }
+            } catch (error) {
+                clearInterval(intervalId);
+                reject(error)
+            }
+        }, connectorPollingInterval);
+    });
+};
 
 module.exports = runPolling;

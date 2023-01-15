@@ -11,8 +11,8 @@ const successMessage = (message) => {
 // Throw error
 const errorMessage = (message) => {
     console.log(os.EOL);
-    const err = new Error();
-    throw new Error(chalk.red(message) + "\n" + err.stack);
+    console.log(chalk.red(message));
+    process.exit(1);
 }
 
 module.exports = {

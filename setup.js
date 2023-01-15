@@ -3,6 +3,10 @@ const fs = require('fs');
 const os = require('os');
 require('pretty-error').start();
 const chalk = require('chalk');
+const figlet = require('figlet');
+const open = require('open');
+const { setTimeout } = require("timers/promises");
+
 // custom functions
 const axiosWithAuth = require('./axiosWithAuth');
 const writeObjectToFile = require('./writeFiles');
@@ -87,33 +91,81 @@ const connectorObject = {
     "pause_after_trial": true,
     "group_id": '',
     "config": {
-        "schema": "github"
+        "schema": "tutorial_github"
     },
     "connect_card_config": {
-        "redirect_uri": "https//www.jimmyhooker.com"
+        "redirect_uri": "https://www.jimmyhooker.com"
     }
 }
 let connectorId;
 let connectCardUrl;
 
+// Retrieve the schema
+// https://fivetran.com/docs/rest-api/connectors/connector-management-api-faq/schema-status
+const updateSchemaStatusObject = {
+    "schema_status": "blocked_on_capture",
+    "paused": false
+    };
+
+// Change schema change handling to BLOCK_ALL
+// https://fivetran.com/docs/rest-api/connectors/connector-management-api-faq/schema-status
+const updateReloadExcludeObject = {
+    "exclude_mode": "EXCLUDE"
+}
+
+// Modify the schema
+// https://fivetran.com/docs/rest-api/connectors#modifyaconnectorschemaconfig
+const updateSchemaObject = {
+    "schema_change_handling": "BLOCK_ALL",
+    "schemas": {
+        "test_github": {
+            "name_in_destination": "test_github",
+            "enabled": true,
+            "tables": {
+                "card": {
+                    "name_in_destination": "card",
+                    "enabled": true,
+                    "enabled_patch_settings": {
+                        "allowed": true
+                    }
+                },
+                "column": {
+                    "name_in_destination": "column",
+                    "enabled": true,
+                    "enabled_patch_settings": {
+                        "allowed": true
+                    }
+                }
+            }
+        }
+    }
+}
+
+// Set schema status to ready
+// https://fivetran.com/docs/rest-api/connectors/connector-management-api-faq/schema-status
+const updateSchemaStatusReadyObject = {
+    "schema_status": "ready"
+}
+
 // Function to create against the Fivetran API
 const createObject = async (resource, endpoint, operation, requestObject) => {
     let responseMessage;
     try {
-        // console.log(requestObject)
+        console.log(requestObject)
         const response = await axiosWithAuth(endpoint, operation, requestObject);
-        // console.log(response)
         responseMessage = response.data;
-        console.log(responseMessage)
+
         // parse the response for the id and update our objectIds object
         let objectId;
         if (resource == 'webhook') {
-            // webhook responses don't have a data object
+            // webhook responses don't have a data object (right now! being updated!)
             objectId = responseMessage.id;
         } else if (resource == 'connector') {
             connectCardUrl = responseMessage.data.connect_card.uri;
             objectId = responseMessage.data.id;
-            successMessage(connectCardUrl);
+
+            // Open the connect card url in the browser
+            open(connectCardUrl);
         } else {
             objectId = responseMessage.data.id;
         }
@@ -126,12 +178,36 @@ const createObject = async (resource, endpoint, operation, requestObject) => {
         if (resource == 'webhook') {
             errorMessage(`${error}${os.EOL}${responseMessage.data}${os.EOL} Please check your webhook url is live, https, and able to respond with 2xx codes`);
         }
-        errorMessage(responseMessage.data);
+        console.log(error);
+        process.exit(1);
     }
+}
+
+const asciiArt = (text) => {
+    figlet.text(text, {
+        font: 'Slant',
+        horizontalLayout: 'default',
+        verticalLayout: 'default',
+        width: 80,
+        whitespaceBreak: true
+    }, function(err, data) {
+        if (err) {
+            console.log('Something went wrong...');
+            console.dir(err);
+            return;
+        }
+        console.log(chalk.blue(data));
+    });
 }
 
   const runSetup = async () => {
     try {
+        // Hell yeah
+        console.log(os.EOL);
+        asciiArt('Powered by Fivetran');
+        console.log(os.EOL);
+        await setTimeout(2000);
+
         // Create Group
         await createObject('group', groupsEndpoint, 'post', groupObject);
         // update our destinationObject and connectorObject's now that we have a group ID
@@ -149,10 +225,27 @@ const createObject = async (resource, endpoint, operation, requestObject) => {
         // update our connectorId variable now that we have it
         connectorId = objectIds.connector;
 
-        // Poll for connector status
-        await runPolling(connectorsEndpoint, connectorId);
+        // Poll for connector setup_state being connected
+        await runPolling(connectorsEndpoint, connectorId, 'setup_state', 'connected');
 
-        console.log("does this run right away because of the await?");
+        // Update connector schema status to blocked on capture
+        await axiosWithAuth(`${connectorsEndpoint}/${connectorId}`, 'patch', updateSchemaStatusObject);
+
+        // Poll for connector schema_status being blocked_on_customer
+        await runPolling(connectorsEndpoint, connectorId, 'schema_status', 'blocked_on_customer');
+
+        // Reload schema excluding all tables
+        await axiosWithAuth(`${connectorsEndpoint}/${connectorId}/schemas/reload`, 'post', updateReloadExcludeObject);
+
+        // Modify the schema
+        await axiosWithAuth(`${connectorsEndpoint}/${connectorId}/schemas`, 'patch', updateSchemaObject);
+
+        // Set schema status to ready
+        await axiosWithAuth(`${connectorsEndpoint}/${connectorId}`, 'patch', updateSchemaStatusReadyObject);
+
+        console.log(os.EOL);
+        asciiArt('Hell Yeah');
+        console.log(os.EOL);
     } catch (error) {
       errorMessage(error);
     }
