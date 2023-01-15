@@ -14,6 +14,7 @@ const axiosWithAuth = async (endpoint, method = "get", data = {}) => {
   let response;
   console.log(os.EOL);
   console.log(
+    console.log(chalk.green("Request"));
     chalk.blue(`Making a ${method.toUpperCase()} request to ${endpoint}`)
   );
   if (Object.keys(data).length > 0) {
