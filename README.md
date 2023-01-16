@@ -22,7 +22,7 @@ These are the steps this set of scripts will be running through to create a conn
 ## Prepare
 
 - [Create a Fivetran account](https://fivetran.com/signup) and copy your key and secret that [you can find in settings](https://fivetran.com/account/settings/account). Find out more in our [getting started guide](https://fivetran.com/docs/rest-api/getting-started)
-- [Create an trial account on Snowflake](https://signup.snowflake.com/) and set it up for Fivetran with [this guide](https://fivetran.com/docs/destinations/snowflake/setup-guide). You only need to get up to Step 2. Write down all the usernames/passwords/etc. You'll also need the host URL, which you can find in Admin > Accounts, then hover the Account ID and click the link icon. We'll use these to update the Env variables later in this guide.
+- [Create a trial account on Snowflake](https://signup.snowflake.com/) and set it up for Fivetran with [this guide](https://fivetran.com/docs/destinations/snowflake/setup-guide). You only need to get up to Step 2. Write down all the usernames/passwords/etc. You'll also need the host URL, which you can find in Admin > Accounts, then hover the Account ID and click the link icon. We'll use these to update the Env variables later in this guide.
 - We'll need to be able to accept webhooks locally to run this project, so you'll need NGROK. Create an account and install it: https://ngrok.com/download
 - Make sure you have [Node](https://nodejs.org/en/) installed (I generally stick to LTS, you'll need >= v16 for this project).
 
