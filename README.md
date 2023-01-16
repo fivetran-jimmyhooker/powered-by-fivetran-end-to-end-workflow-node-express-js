@@ -1,4 +1,4 @@
-# Powered by Fivetran End-to-End Workflow in Node/Expres
+# Powered by Fivetran End-to-End Workflow in Node/Express
 
 End-to-end example of how to build and orchestrate on top of [Powered by Fivetran](https://fivetran.com/docs/rest-api) in Express/Node. This entire project is pretty heavily commented and is structured to be relatively easy to read. Please give feedback if it doesn't accomplish its goal!
 
