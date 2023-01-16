@@ -1,6 +1,7 @@
 const fs = require("fs");
 const os = require("os");
 require("pretty-error").start();
+require("dotenv").config();
 const chalk = require("chalk");
 const figlet = require("figlet");
 const open = require("open");
@@ -16,6 +17,13 @@ const runPolling = require("./run-polling.js");
 // and then run a sync. When it receives the sync_end webhook event,
 // it will pause the connector.
 //
+
+// Endpoints
+const base = "https://api.fivetran.com/v1";
+const groupsEndpoint = `${base}/groups`;
+const connectorsEndpoint = `${base}/connectors`;
+const destinationsEndpoint = `${base}/destinations`;
+const webhooksEndpoint = `${base}/webhooks/account`;
 
 // We'll keep track of the Fivetran objects we create with another object!
 // We'll write this object to a file called setup-details.json so we can easily
@@ -38,13 +46,6 @@ if (fs.existsSync(filePath)) {
 } else {
   writeObjectToFile(filePath, objectIds);
 }
-
-// Endpoints
-const base = "https://api.fivetran.com/v1";
-const groupsEndpoint = `${base}/groups`;
-const connectorsEndpoint = `${base}/connectors`;
-const destinationsEndpoint = `${base}/destinations`;
-const webhooksEndpoint = `${base}/webhooks/account`;
 
 // Group Object (feel free to rename)
 // https://fivetran.com/docs/rest-api/groups
@@ -145,11 +146,10 @@ const updateSchemaStatusReadyObject = {
   schema_status: "ready",
 };
 
-// Function to create against the Fivetran API
+// Simple function to update our created objects in the setup-details.json file
 const createObject = async (resource, endpoint, operation, requestObject) => {
   let responseMessage;
   try {
-    console.log(requestObject);
     const response = await axiosWithAuth(endpoint, operation, requestObject);
     responseMessage = response.data;
 
@@ -169,6 +169,7 @@ const createObject = async (resource, endpoint, operation, requestObject) => {
     }
 
     objectIds[resource] = objectId;
+    console.log(objectIds);
 
     // Write the id to a json file for later deletion
     writeObjectToFile(filePath, objectIds);
@@ -180,13 +181,14 @@ const createObject = async (resource, endpoint, operation, requestObject) => {
           `${error}${os.EOL}${responseMessage.data}${os.EOL} Please check your webhook url is live, https, and able to respond with 2xx codes`
         )
       );
+    } else {
+      console.log(error);
     }
-
-    console.log(error);
     process.exit(1);
   }
 };
 
+// Just making cool ascii art to liven up the place
 const asciiArt = (text) => {
   figlet.text(
     text,
@@ -211,7 +213,7 @@ const asciiArt = (text) => {
 
 const runSetup = async () => {
   try {
-    // Hell yeah
+    // Let's do this
     console.log(os.EOL);
     asciiArt("Powered by Fivetran");
     console.log(os.EOL);
@@ -289,7 +291,7 @@ const runSetup = async () => {
     );
 
     console.log(os.EOL);
-    asciiArt("Hell Yeah");
+    asciiArt("You are now Powered by Fivetran!");
     console.log(os.EOL);
   } catch (error) {
     console.log(chalk.red(error));
@@ -297,13 +299,3 @@ const runSetup = async () => {
 };
 
 runSetup();
-
-// Once connector is in auth state, retrieve the schema
-
-// modify the schema to remove everything but a few columns
-
-// unpause the connector
-
-// listen on endpoint for sync_end webhook event
-
-// once you get first sync_end event, pause the connector

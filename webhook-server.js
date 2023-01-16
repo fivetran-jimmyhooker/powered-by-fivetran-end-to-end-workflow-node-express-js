@@ -9,13 +9,13 @@ dotenv.config();
 const signatureSecret = process.env.SIGNATURE_SECRET;
 
 const dumpHeaders = (headers) => {
-  console.log(chalk.cyan("Headers"));
+  console.log(chalk.cyan("Webhook Headers"));
   console.log(headers);
   console.log(os.EOL);
 };
 
 const dumpPayload = (payload) => {
-  console.log(chalk.cyan("Payload"));
+  console.log(chalk.cyan("Webhook Payload"));
   console.log(payload);
   console.log(os.EOL);
 };
@@ -29,9 +29,9 @@ const checkSignature = (request) => {
       .update(request.body)
       .digest("hex");
     if (actualSignature.toUpperCase() === expectedSignature.toUpperCase()) {
-      console.log(chalk.green("Signature OK"));
+      console.log(chalk.green("Webhook Signature OK"));
     } else {
-      console.log(chalk.red("Signature mismatch"));
+      console.log(chalk.red("Webhook Signature mismatch"));
     }
   }
 };

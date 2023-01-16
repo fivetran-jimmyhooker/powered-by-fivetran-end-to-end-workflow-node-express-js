@@ -3,6 +3,10 @@ require("dotenv").config();
 const os = require("os");
 const chalk = require("chalk");
 
+//
+// Utility function to send authenticated requests to the Fivetran API
+//
+
 // Auth
 const key = process.env.API_KEY;
 const secret = process.env.API_SECRET;
@@ -13,9 +17,11 @@ const base64Encoded = new Buffer.from(token).toString("base64");
 const axiosWithAuth = async (endpoint, method = "get", data = {}) => {
   let response;
   console.log(os.EOL);
-  console.log(chalk.green("Request"));
+  console.log(chalk.blue.bold(">> Request"));
   console.log(
-    chalk.blue(`Making a ${method.toUpperCase()} request to ${endpoint}`)
+    chalk.blue(
+      `Making a ${chalk.bold(method.toUpperCase())} request to ${endpoint}`
+    )
   );
   if (Object.keys(data).length > 0) {
     console.log(data);
@@ -31,8 +37,9 @@ const axiosWithAuth = async (endpoint, method = "get", data = {}) => {
         Authorization: `Basic ${base64Encoded}`,
       },
     });
+
     console.log(os.EOL);
-    console.log(chalk.green("Response"));
+    console.log(chalk.green.bold("<< Response"));
     console.log(response.data);
     return response;
   } catch (error) {
