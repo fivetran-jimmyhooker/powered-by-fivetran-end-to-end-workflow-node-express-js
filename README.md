@@ -37,7 +37,8 @@ These are the steps this set of scripts will be running through to create a conn
 Create a .env file in the root and fill out the following variables. These will be used for various API requests and setup.
 
 - API key and secret you can get from your [Fivetran settings](https://fivetran.com/account/settings/account).
-- `WEBHOOK_URL` will be the secure, https url you get when running NGROK in the previous step. The destination variables will be what you used to setup your Snowflake database.
+- `WEBHOOK_URL` will be the secure, https url you get when running NGROK in the previous step.
+- The destination variables will be what you used to setup your Snowflake database. [See here for details](https://fivetran.com/docs/rest-api/destinations/config#snowflake).
 - To get the `DESTINATION_HOST`, go to your Snowflake account, then head to Admin > Accounts. Hover the Account ID and click the link icon to copy the host url.
 - `SIGNATURE_SECRET` is any string you want to use to validate the webhook events are coming from Fivetran, you can just use 'poweredbyfivetran' for this tutorial if you'd like.
 - For this tutorial, we'll be using [password auth for Snowflake](https://fivetran.com/docs/rest-api/destinations/config#snowflake), so go ahead and set `DESTINATION_AUTH=PASSWORD`.
